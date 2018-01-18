@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""Observer pattern in Python.
+
+Inspired from http://www.giantflyingsaucer.com/blog/?p=5117
+
+TODO:
+
+"""
+
 from abc import ABCMeta, abstractmethod
 
 
