@@ -18,7 +18,7 @@ import threading
 import time
 import logging
 
-from schema_games.breakout.recommender.recommender import RandomRecommender
+from schema_games.breakout.recommender.random_recommender import RandomRecommender
 
 logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-10s) %(message)s',

@@ -19,8 +19,3 @@ class RandomRecommender(Recommender):
                 # self.recommendation = "hello there. This is a recommendation"
                 self.send_recommendation()
 
-    def get_observation(self, obs):
-        # everytime I get an observation I try to give a recommendation:
-        Recommender.get_observation(self, obs)
-        self.issue_recommendation()
-
