@@ -1,4 +1,4 @@
-from Queue import LifoQueue
+from queue import LifoQueue
 from abc import ABCMeta, abstractmethod
 
 from pattern.observer import Observable, Observer

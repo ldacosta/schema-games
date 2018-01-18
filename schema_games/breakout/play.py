@@ -91,10 +91,10 @@ class Player(Observer):
         fps : int
             Frame rate per second at which to display the game.
         """
-        print blue("-" * 80)
-        print blue("Starting interactive game. "
-                   "Press <ESC> at any moment to terminate.")
-        print blue("-" * 80)
+        print(blue("-" * 80))
+        print(blue("Starting interactive game. "
+                   "Press <ESC> at any moment to terminate."))
+        print(blue("-" * 80))
 
         env_args = {
             'return_state_as_image': True,
