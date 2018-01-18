@@ -1,4 +1,5 @@
 from Queue import LifoQueue
+from abc import ABCMeta, abstractmethod
 from pattern.observer import Observer, Observable
 
 class Recommender(Observable, Observer): # , metaclass=ABCMeta
@@ -18,7 +19,7 @@ class Recommender(Observable, Observer): # , metaclass=ABCMeta
 
     def send_recommendation(self):
         if self.recommendation is not None:
-            print("[Recommender] Sending: %s" % (self.recommendation))
+            # print("[Recommender] Sending: %s" % (self.recommendation))
             self.update_observers(self.recommendation)
 
     def update(self, *args, **kwargs):
@@ -37,7 +38,7 @@ class Recommender(Observable, Observer): # , metaclass=ABCMeta
             Nothing.
 
         """
-        print("[Recommender] Got an observation: %s" % (obs))
+        # print("[Recommender] Got an observation")
         self.observations.put(obs)
 
 import random
@@ -45,13 +46,18 @@ import time
 
 class RandomRecommender(Recommender):
 
+    def __init__(self, env):
+        Recommender.__init__(self)
+        self.env = env
+
     def issue_recommendation(self):
         if not self.observations.empty():
             if random.random() < 0.5:
-                print("[RandomRecommender] I have %d observations; will give a recommendation and empty the observations." % (self.observations.qsize()))
+                # print("[RandomRecommender] I have %d observations; will give a recommendation and empty the observations." % (self.observations.qsize()))
                 while not self.observations.empty():
                     self.observations.get()
-                self.recommendation = "hello there. This is a recommendation"
+                self.recommendation = self.env.action_space.sample() # a random action
+                # self.recommendation = "hello there. This is a recommendation"
                 self.send_recommendation()
 
     def get_observation(self, obs):
