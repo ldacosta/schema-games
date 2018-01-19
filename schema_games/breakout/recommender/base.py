@@ -12,6 +12,10 @@ class Recommender(Observable, Observer): # , metaclass=ABCMeta
         self.recommendation = None
         self.observations = LifoQueue()
 
+    def empty_observations(self):
+        with self.observations.mutex: # make this thread safe
+            self.observations.queue.clear()
+
     @abstractmethod
     def issue_recommendation(self):
         """

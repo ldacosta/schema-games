@@ -13,8 +13,7 @@ class RandomRecommender(Recommender):
         if not self.observations.empty():
             if random.random() < 0.5:
                 # print("[RandomRecommender] I have %d observations; will give a recommendation and empty the observations." % (self.observations.qsize()))
-                while not self.observations.empty():
-                    self.observations.get()
+                self.empty_observations()
                 self.recommendation = self.env.action_space.sample() # a random action
                 # self.recommendation = "hello there. This is a recommendation"
                 self.send_recommendation()

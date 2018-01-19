@@ -13,8 +13,7 @@ class XCSRecommender(Recommender):
             latest_obs = self.observations.get()
             assert type(latest_obs) == np.ndarray, "Current implementation only encodes 'raw' images"
             # print("[RandomRecommender] I have %d observations; will give a recommendation and empty the observations." % (self.observations.qsize()))
-            while not self.observations.empty():
-                self.observations.get()
+            self.empty_observations()
             self.recommendation = self.env.action_space.sample() # TODO!!!
             if False: # TODO, obviously
                 self.send_recommendation()
