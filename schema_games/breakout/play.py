@@ -24,7 +24,9 @@ logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-10s) %(message)s',
                     )
 
-class Player(Observer):
+from xcs.scenarios import Scenario
+
+class Player(Observer, Scenario):
 
     def __init__(self, env, recommender = None):
         """
@@ -37,6 +39,56 @@ class Player(Observer):
             self.recommender.register(observer=self)
         self.env = env
         self.updating = False
+        self.possible_actions = [pygame.K_LEFT, pygame.K_RIGHT] # TODO: should I put "do nothing" here?
+
+    @classmethod
+    def from_env_class(cls, environment_class,
+                  cheat_mode=DEFAULT_CHEAT_MODE,
+                  debug=DEFAULT_DEBUG, recommender = None):
+        """
+        Interactively play an environment.
+
+        Parameters
+        ----------
+        environment_class : type
+            A subclass of schema_games.breakout.core.BreakoutEngine that represents
+            a game. A convenient list is included in schema_games.breakout.games.
+        cheat_mode : bool
+            If True, player has an infinite amount of lives.
+        debug : bool
+            If True, print debugging messages and perform additional sanity checks.
+        recommender: something that inherits from 'Recommender'. Or None if you want to play interactively.
+        """
+        env_args = {
+            'return_state_as_image': True,
+            'debugging': debug,
+        }
+
+        if cheat_mode:
+            env_args['num_lives'] = np.PINF
+
+        env = environment_class(**env_args)
+        return cls(env, recommender)
+
+    # /////// Methods defined for it to be a Scenario
+    @property
+    def is_dynamic(self):
+        return True
+
+    def get_possible_actions(self):
+        return self.possible_actions
+
+    def reset(self):
+        # not sure what to do. Or even if I have to do anything. TODO?
+        logging.debug("not sure what to do. Or even if I have to do anything. TODO?")
+
+    def more(self):
+        return not self.env_done
+
+    def sense(self):
+
+
+    # /////// Methods defined for it to be an Observer
 
     def update(self, *args, **kwargs):
         def press_key(a_key):
@@ -72,9 +124,7 @@ class Player(Observer):
                 print("[Player] will move RIGHT")
                 press_key(pygame.K_RIGHT)
 
-    def play_game(self, environment_class,
-                  cheat_mode=DEFAULT_CHEAT_MODE,
-                  debug=DEFAULT_DEBUG,
+    def play_game(self,
                   fps=30):
         """
         Interactively play an environment.
@@ -96,18 +146,9 @@ class Player(Observer):
                    "Press <ESC> at any moment to terminate."))
         print(blue("-" * 80))
 
-        env_args = {
-            'return_state_as_image': True,
-            'debugging': debug,
-        }
-
-        if cheat_mode:
-            env_args['num_lives'] = np.PINF
-
-        env = environment_class(**env_args)
-        keys_to_action = defaultdict(lambda: env.NOOP, {
-                (pygame.K_LEFT,): env.LEFT,
-                (pygame.K_RIGHT,): env.RIGHT,
+        keys_to_action = defaultdict(lambda: self.env.NOOP, {  # TODO: re-use self.possible_actions
+                (pygame.K_LEFT,): self.env.LEFT,
+                (pygame.K_RIGHT,): self.env.RIGHT,
             })
 
         def callback(prev_obs, obs, action, rew, done, info):
@@ -117,7 +158,7 @@ class Player(Observer):
             # print("reward is %.2f" % (rew))
             # return [rew, ]
 
-        play(env, fps=fps, keys_to_action=keys_to_action, zoom=ZOOM_FACTOR, callback=callback)
+        play(self.env, fps=fps, keys_to_action=keys_to_action, zoom=ZOOM_FACTOR, callback=callback)
 
 if __name__ == '__main__':
     """
@@ -157,4 +198,4 @@ if __name__ == '__main__':
 
     the_env = getattr(games, variant)
     player = Player(the_env, recommender=RandomRecommender(the_env))
-    player.play_game(the_env, debug=False, cheat_mode=cheat_mode)
+    player.play_game(the_env)
