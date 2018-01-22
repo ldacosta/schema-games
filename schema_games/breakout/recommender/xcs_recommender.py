@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 import numpy as np
 from schema_games.breakout.recommender.base import Recommender
 from schema_games.breakout.play import Player
@@ -15,10 +17,14 @@ class XCSRecommender(Recommender, Scenario):
     def __init__(self, env, alogger: logging.Logger, mode: RunningMode):
         Recommender.__init__(self)
         self.env = env
-        if mode == RunningMode.TRAINING:
-            # start player
-            p = Player(env, alogger=alogger, recommender=self)
-            p.play_game(fps=30) # TODO: do we want to accelerate the game? Put this a number > 30
+        self.mode = mode
+        self.player = None
+        # if self.mode == RunningMode.TRAINING:
+        #     assert player is not None, "A 'player' has to be provided"
+        #     self.player = player
+
+    def set_player(self, player: Player):
+        self.player = player
 
     def issue_recommendation(self):
         if not self.observations.empty():
@@ -36,7 +42,8 @@ class XCSRecommender(Recommender, Scenario):
         return True
 
     def get_possible_actions(self):
-        return self.possible_actions
+        assert self.mode == RunningMode.TRAINING, "'get_possible_actions' only makes sense in training mode"
+        return self.player.possible_actions
 
     def reset(self):
         # not sure what to do. Or even if I have to do anything. TODO?
@@ -108,14 +115,33 @@ if __name__ == '__main__':
     debug = options.debug
     cheat_mode = options.cheat_mode
 
-    breakout_env = getattr(games, variant)
 
+
+    env_class = getattr(games, variant)
     common_logger = get_logger(name="common_logger", debug_log_file_name="common_logger.log")
-    scenario = ScenarioObserver(XCSRecommender(breakout_env, alogger=common_logger, mode=RunningMode.TRAINING))
+    breakout_env = Player.env_from_class(env_class, cheat_mode, debug)
+    xcs_recommender = XCSRecommender(breakout_env, alogger=common_logger, mode=RunningMode.TRAINING)
+    # start player
+    player = Player(breakout_env, alogger=common_logger, recommender=xcs_recommender)
+    xcs_recommender.set_player(player)
+
+
+    scenario = ScenarioObserver(xcs_recommender)
     algorithm = XCSAlgorithm()
     # algorithm.exploration_probability = .1
     # algorithm.discount_factor = 0
     # algorithm.do_ga_subsumption = True
     # algorithm.do_action_set_subsumption = True
     model = algorithm.new_model(scenario)
-    model.run(scenario, learn=True)
+    # model.run(scenario, learn=True)
+
+    def wait_and_run():
+        time.sleep(1)
+        model.run(scenario, learn=True)
+
+    d = threading.Thread(name='run_recommender', target=wait_and_run)
+    # d.setDaemon(True)
+    d.start()
+
+    # start the game
+    player.play_game(fps=30)  # TODO: do we want to accelerate the game? Put this a number > 30
