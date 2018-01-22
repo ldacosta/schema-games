@@ -106,7 +106,7 @@ def compute_edge_nzis(nzis):
 
 
 def offset_nzis_from_position(nzis, pos):
-    return zip(*(nzis + np.array(pos)).T)
+    return list(zip(*(nzis + np.array(pos)).T))
 
 
 ###############################################################################
