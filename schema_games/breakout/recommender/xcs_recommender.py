@@ -1,9 +1,9 @@
-import datetime
-import time
+import logging
 import numpy as np
 from schema_games.breakout.recommender.base import Recommender
 from schema_games.breakout.play import Player
 from xcs.scenarios import Scenario
+from schema_games.utils import get_logger
 
 from enum import Enum, auto
 class RunningMode(Enum):
@@ -12,12 +12,12 @@ class RunningMode(Enum):
 
 class XCSRecommender(Recommender, Scenario):
 
-    def __init__(self, env, mode: RunningMode):
+    def __init__(self, env, alogger: logging.Logger, mode: RunningMode):
         Recommender.__init__(self)
         self.env = env
         if mode == RunningMode.TRAINING:
             # start player
-            p = Player(env, recommender=self)
+            p = Player(env, alogger=alogger, recommender=self)
             p.play_game(fps=30) # TODO: do we want to accelerate the game? Put this a number > 30
 
     def issue_recommendation(self):
@@ -46,7 +46,7 @@ class XCSRecommender(Recommender, Scenario):
         return not self.env_done
 
     def sense(self):
-        latest_obs = self.observations.get() # if this fails: the environment is not running or it's not updating me.
+        latest_obs = self.observations.get(block=False) # if this fails: the environment is not running or it's not updating me.
         self.empty_observations() # I used the observations, leave space for new one.
         return latest_obs
 
@@ -66,11 +66,52 @@ if __name__ == '__main__':
     """
     Trains an XCSRecommender.
     """
+    import argparse
     from xcs import XCSAlgorithm
     from xcs.scenarios import ScenarioObserver
 
-    breakout_env =
-    scenario = ScenarioObserver(XCSRecommender(breakout_env, mode=RunningMode.TRAINING))
+    from schema_games.breakout import games
+
+    ZOOM_FACTOR = 5
+    DEFAULT_DEBUG = True
+    DEFAULT_CHEAT_MODE = False
+
+    parser = argparse.ArgumentParser(
+        description='Play interactively one of breakout game variants.',
+        usage='play.py [<Game>] [--debug]')
+
+    parser.add_argument(
+        'game',
+        default='StandardBreakout',
+        type=str,
+        help="Game variant specified as class name."
+    )
+
+    parser.add_argument(
+        '--debug',
+        dest='debug',
+        default=DEFAULT_DEBUG,
+        action='store_true',
+        help="Print debugging messages and perform additional sanity checks."
+    )
+
+    parser.add_argument(
+        '--cheat_mode',
+        dest='cheat_mode',
+        default=DEFAULT_CHEAT_MODE,
+        action='store_true',
+        help="Cheat mode: infinite lives."
+    )
+
+    options = parser.parse_args()
+    variant = options.game
+    debug = options.debug
+    cheat_mode = options.cheat_mode
+
+    breakout_env = getattr(games, variant)
+
+    common_logger = get_logger(name="common_logger", debug_log_file_name="common_logger.log")
+    scenario = ScenarioObserver(XCSRecommender(breakout_env, alogger=common_logger, mode=RunningMode.TRAINING))
     algorithm = XCSAlgorithm()
     # algorithm.exploration_probability = .1
     # algorithm.discount_factor = 0

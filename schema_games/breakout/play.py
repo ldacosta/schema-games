@@ -5,6 +5,7 @@ from collections import defaultdict
 from gym.utils.play import play
 import pygame
 
+from schema_games.utils import get_logger
 from schema_games.breakout import games
 from schema_games.printing import blue
 
@@ -26,9 +27,9 @@ logging.basicConfig(level=logging.DEBUG,
 
 from xcs.scenarios import Scenario
 
-class Player(Observer, Scenario):
+class Player(Observer): # Scenario
 
-    def __init__(self, env, recommender = None):
+    def __init__(self, env, alogger: logging.Logger, recommender = None):
         """
         
         Args:
@@ -40,11 +41,12 @@ class Player(Observer, Scenario):
         self.env = env
         self.updating = False
         self.possible_actions = [pygame.K_LEFT, pygame.K_RIGHT] # TODO: should I put "do nothing" here?
+        self.alogger = alogger
 
     @classmethod
-    def from_env_class(cls, environment_class,
+    def from_env_class(cls, environment_class,recommender, alogger: logging.Logger,
                   cheat_mode=DEFAULT_CHEAT_MODE,
-                  debug=DEFAULT_DEBUG, recommender = None):
+                  debug=DEFAULT_DEBUG):
         """
         Interactively play an environment.
 
@@ -67,25 +69,24 @@ class Player(Observer, Scenario):
         if cheat_mode:
             env_args['num_lives'] = np.PINF
 
-        env = environment_class(**env_args)
-        return cls(env, recommender)
+        return cls(env=environment_class(**env_args), alogger=alogger, recommender=recommender)
 
     # /////// Methods defined for it to be a Scenario
-    @property
-    def is_dynamic(self):
-        return True
-
-    def get_possible_actions(self):
-        return self.possible_actions
-
-    def reset(self):
-        # not sure what to do. Or even if I have to do anything. TODO?
-        logging.debug("not sure what to do. Or even if I have to do anything. TODO?")
-
-    def more(self):
-        return not self.env_done
-
-    def sense(self):
+    # @property
+    # def is_dynamic(self):
+    #     return True
+    #
+    # def get_possible_actions(self):
+    #     return self.possible_actions
+    #
+    # def reset(self):
+    #     # not sure what to do. Or even if I have to do anything. TODO?
+    #     logging.debug("not sure what to do. Or even if I have to do anything. TODO?")
+    #
+    # def more(self):
+    #     return not self.env_done
+    #
+    # def sense(self):
 
 
     # /////// Methods defined for it to be an Observer
@@ -196,6 +197,46 @@ if __name__ == '__main__':
     debug = options.debug
     cheat_mode = options.cheat_mode
 
-    the_env = getattr(games, variant)
-    player = Player(the_env, recommender=RandomRecommender(the_env))
-    player.play_game(the_env)
+    env_class = getattr(games, variant)
+    # common_logger = get_logger(name="common_logger", debug_log_file_name="common_logger.log")
+    # player = Player.from_env_class(environment_class=env_class, recommender=None, alogger=common_logger)
+    # # player = Player(the_env, alogger=common_logger, recommender=None) # RandomRecommender(the_env))
+    # # player.play_game()
+    #
+    # d = threading.Thread(name='press_button', target=player.play_game)
+    # # # d.setDaemon(True)
+    # d.start()
+
+    env_args = {
+        'return_state_as_image': True,
+        'debugging': debug,
+    }
+
+    if cheat_mode:
+        env_args['num_lives'] = np.PINF
+
+    env=env_class(**env_args)
+
+    print(blue("-" * 80))
+    print(blue("Starting interactive game. "
+               "Press <ESC> at any moment to terminate."))
+    print(blue("-" * 80))
+
+    keys_to_action = defaultdict(lambda: env.NOOP, {  # TODO: re-use self.possible_actions
+        (pygame.K_LEFT,): env.LEFT,
+        (pygame.K_RIGHT,): env.RIGHT,
+    })
+
+
+    # def callback(prev_obs, obs, action, rew, done, info):
+    #     if self.recommender is not None:
+    #         self.recommender.get_observation(obs)
+    #     return None
+    #     # print("reward is %.2f" % (rew))
+    #     # return [rew, ]
+    #
+
+    play(env, fps=30, keys_to_action=keys_to_action, zoom=ZOOM_FACTOR) # , callback=None)
+
+
+
