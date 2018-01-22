@@ -44,7 +44,7 @@ class Player(Observer): # Scenario
         self.alogger = alogger
 
     @classmethod
-    def from_env_class(cls, environment_class,recommender, alogger: logging.Logger,
+    def env_from_class(cls, environment_class,recommender,
                   cheat_mode=DEFAULT_CHEAT_MODE,
                   debug=DEFAULT_DEBUG):
         """
@@ -69,7 +69,28 @@ class Player(Observer): # Scenario
         if cheat_mode:
             env_args['num_lives'] = np.PINF
 
-        return cls(env=environment_class(**env_args), alogger=alogger, recommender=recommender)
+        return environment_class(**env_args)
+
+    @classmethod
+    def from_env_class(cls, environment_class,recommender, alogger: logging.Logger,
+                  cheat_mode=DEFAULT_CHEAT_MODE,
+                  debug=DEFAULT_DEBUG):
+        """
+        Interactively play an environment.
+
+        Parameters
+        ----------
+        environment_class : type
+            A subclass of schema_games.breakout.core.BreakoutEngine that represents
+            a game. A convenient list is included in schema_games.breakout.games.
+        cheat_mode : bool
+            If True, player has an infinite amount of lives.
+        debug : bool
+            If True, print debugging messages and perform additional sanity checks.
+        recommender: something that inherits from 'Recommender'. Or None if you want to play interactively.
+        """
+        env=cls.env_from_class(environment_class, cheat_mode, debug)
+        return cls(env=env, alogger=alogger, recommender=recommender)
 
     # /////// Methods defined for it to be a Scenario
     # @property
@@ -198,45 +219,13 @@ if __name__ == '__main__':
     cheat_mode = options.cheat_mode
 
     env_class = getattr(games, variant)
-    # common_logger = get_logger(name="common_logger", debug_log_file_name="common_logger.log")
-    # player = Player.from_env_class(environment_class=env_class, recommender=None, alogger=common_logger)
-    # # player = Player(the_env, alogger=common_logger, recommender=None) # RandomRecommender(the_env))
-    # # player.play_game()
-    #
+    common_logger = get_logger(name="common_logger", debug_log_file_name="common_logger.log")
+    the_env = Player.env_from_class(env_class, cheat_mode, debug)
+
+    # player = Player.from_env_class(environment_class=env_class, recommender=RandomRecommender(the_env), alogger=common_logger) # None
+    player = Player(the_env, alogger=common_logger, recommender=RandomRecommender(the_env))
+    player.play_game()
+
     # d = threading.Thread(name='press_button', target=player.play_game)
-    # # # d.setDaemon(True)
+    # # d.setDaemon(True)
     # d.start()
-
-    env_args = {
-        'return_state_as_image': True,
-        'debugging': debug,
-    }
-
-    if cheat_mode:
-        env_args['num_lives'] = np.PINF
-
-    env=env_class(**env_args)
-
-    print(blue("-" * 80))
-    print(blue("Starting interactive game. "
-               "Press <ESC> at any moment to terminate."))
-    print(blue("-" * 80))
-
-    keys_to_action = defaultdict(lambda: env.NOOP, {  # TODO: re-use self.possible_actions
-        (pygame.K_LEFT,): env.LEFT,
-        (pygame.K_RIGHT,): env.RIGHT,
-    })
-
-
-    # def callback(prev_obs, obs, action, rew, done, info):
-    #     if self.recommender is not None:
-    #         self.recommender.get_observation(obs)
-    #     return None
-    #     # print("reward is %.2f" % (rew))
-    #     # return [rew, ]
-    #
-
-    play(env, fps=30, keys_to_action=keys_to_action, zoom=ZOOM_FACTOR) # , callback=None)
-
-
-
