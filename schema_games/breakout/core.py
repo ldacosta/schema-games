@@ -1090,7 +1090,7 @@ class BreakoutEngine(gym.Env):
             return old_index
         else:
             while True:
-                new_index = random.choice(self.index_to_velocity.keys())
+                new_index = random.choice(list(self.index_to_velocity.keys()))
 
                 # If True, make sure that new velocity stays in same quadrant
                 if not self.allow_bounce_against_physics:
