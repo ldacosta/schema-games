@@ -40,11 +40,12 @@ class Player(Observer): # Scenario
             self.recommender.register(observer=self)
         self.env = env
         self.updating = False
-        self.possible_actions = [pygame.K_LEFT, pygame.K_RIGHT] # TODO: should I put "do nothing" here?
+        self.possible_actions = [self.env.LEFT, self.env.RIGHT, self.env.NOOP] # [pygame.K_LEFT, pygame.K_RIGHT] # TODO: should I put "do nothing" here?
         self.alogger = alogger
+        self.game_done = True
 
     @classmethod
-    def env_from_class(cls, environment_class,recommender,
+    def env_from_class(cls, environment_class,
                   cheat_mode=DEFAULT_CHEAT_MODE,
                   debug=DEFAULT_DEBUG):
         """
@@ -92,42 +93,26 @@ class Player(Observer): # Scenario
         env=cls.env_from_class(environment_class, cheat_mode, debug)
         return cls(env=env, alogger=alogger, recommender=recommender)
 
-    # /////// Methods defined for it to be a Scenario
-    # @property
-    # def is_dynamic(self):
-    #     return True
-    #
-    # def get_possible_actions(self):
-    #     return self.possible_actions
-    #
-    # def reset(self):
-    #     # not sure what to do. Or even if I have to do anything. TODO?
-    #     logging.debug("not sure what to do. Or even if I have to do anything. TODO?")
-    #
-    # def more(self):
-    #     return not self.env_done
-    #
-    # def sense(self):
-
-
     # /////// Methods defined for it to be an Observer
 
     def update(self, *args, **kwargs):
+        self.alogger.debug("UPDATE!!!!!! self.updating = %s" % (self.updating))
+        self.alogger.debug("pygame.K_LEFT is %s, pygame.K_RIGHT is %s" % (pygame.K_LEFT, pygame.K_RIGHT))
         def press_key(a_key):
             def do_it():
                 try:
-                    logging.info("[do_it] pygame.K_LEFT is %s, pygame.K_RIGHT is %s" % (pygame.K_LEFT, pygame.K_RIGHT))
-                    logging.debug("[do_it] Starting up and down of %s" % (a_key))
+                    self.alogger.debug("[do_it] Starting up and down of %s" % (a_key))
                     small_time_in_secs = 1.0 / 3.0
                     for motion in [pygame.KEYDOWN, pygame.KEYUP]:
                         pygame.event.post(pygame.event.Event(motion, {'key': a_key}))
                         time.sleep(small_time_in_secs)
-                        logging.debug("[do_it] DONE up and down of %s" % (a_key))
-                    self.updating = False
+                        self.alogger.debug("[do_it] DONE up and down of %s" % (a_key))
                 except Exception as e:
-                    logging.error(e)
+                    self.alogger.error(e)
+                finally:
+                    self.updating = False
 
-            d = threading.Thread(name='press_button', target=do_it)
+            d = threading.Thread(name='press_key', target=do_it)
             # d.setDaemon(True)
             d.start()
 
@@ -137,14 +122,18 @@ class Player(Observer): # Scenario
             action_idx = args[0]
 
             if self.env.NOOP == action_idx:
-                # print("[Player] will do nothing")
+                self.alogger.debug("[Player] will do nothing")
                 self.updating = False
             elif self.env.LEFT == action_idx:
-                print("[Player] will move LEFT")
+                self.alogger.debug("[Player] will move LEFT")
                 press_key(pygame.K_LEFT)
             elif self.env.RIGHT == action_idx:
-                print("[Player] will move RIGHT")
+                self.alogger.debug("[Player] will move RIGHT")
                 press_key(pygame.K_RIGHT)
+            else:
+                self.alogger.error("How come I got proposed to do an action I don't know about?? (idx = %s)" % (action_idx))
+                self.updating = False
+
 
     def play_game(self,
                   fps=30):
@@ -176,6 +165,8 @@ class Player(Observer): # Scenario
         def callback(prev_obs, obs, action, rew, done, info):
             if self.recommender is not None:
                 self.recommender.get_observation(obs)
+                self.recommender.get_reward(rew)
+            self.game_done = done
             return None
             # print("reward is %.2f" % (rew))
             # return [rew, ]

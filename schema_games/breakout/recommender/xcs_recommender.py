@@ -1,11 +1,13 @@
 import logging
 import threading
 import time
+import queue
 import numpy as np
 from schema_games.breakout.recommender.base import Recommender
 from schema_games.breakout.play import Player
 from xcs.scenarios import Scenario
 from schema_games.utils import get_logger
+from xcs.bitstrings import BitString
 
 from enum import Enum, auto
 class RunningMode(Enum):
@@ -19,6 +21,7 @@ class XCSRecommender(Recommender, Scenario):
         self.env = env
         self.mode = mode
         self.player = None
+        self.logger = alogger
         # if self.mode == RunningMode.TRAINING:
         #     assert player is not None, "A 'player' has to be provided"
         #     self.player = player
@@ -50,24 +53,36 @@ class XCSRecommender(Recommender, Scenario):
         logging.debug("not sure what to do. Or even if I have to do anything. TODO?")
 
     def more(self):
-        return not self.env_done
+        return not self.player.game_done
+        # return not self.env_done
 
-    def sense(self):
+    def sense(self) -> BitString:
         latest_obs = self.observations.get(block=False) # if this fails: the environment is not running or it's not updating me.
+        assert type(latest_obs) == np.ndarray, "Current implementation only encodes 'raw' images"
         self.empty_observations() # I used the observations, leave space for new one.
-        return latest_obs
+        return self.__array_to_bitstring__(an_array=latest_obs)
+
+    def __array_to_bitstring__(self, an_array: np.ndarray) -> BitString:
+        assert an_array.ndim == 3 # because it's an image with 3 channels for colours.
+        # in the next line '08' means: left padding, 8 bits.
+        result = BitString(''.join(list(map(lambda x: "{0:08b}".format(x), an_array.flatten()))))
+        self.logger.debug("Situation is size %d" % (len(result)))
+        return result
 
     def execute(self, action):
+        self.logger.debug("action proposed: %s" % (action))
         self.empty_rewards() # old rewards do not interest me - I just want to wait for the NEW one.
         self.send_recommendation(recommendation_to_set=action)
-        # since I know (do I?) that the simulation is running on another thread,
+        # since I know that the simulation is running on another thread (probably the main thread),
         # I can block until I hear from it:
-        return self.rewards.get(block=True, timeout=1) # I lose patience - won't block forever!
-        # if the above doesn't work, you can always try:
-        # small_time_in_secs = 0.1
-        # while self.rewards.empty():
-        #     time.sleep(small_time_in_secs)
-        # return self.rewards.get(block=False) # I know the list is not empty, so I don't want to block.
+        try:
+            ts, reward = self.rewards.get(block=True, timeout=1) # I lose patience - won't block forever!
+            if reward != 0:
+                self.logger.debug("[%s] reward: %s" % (ts, reward))
+            return reward
+        except queue.Empty as no_rewards_exc:
+            self.logger.error("Trying to GET while rewards key is empty")
+            raise no_rewards_exc
 
 if __name__ == '__main__':
     """
@@ -80,7 +95,7 @@ if __name__ == '__main__':
     from schema_games.breakout import games
 
     ZOOM_FACTOR = 5
-    DEFAULT_DEBUG = True
+    DEFAULT_DEBUG = False
     DEFAULT_CHEAT_MODE = False
 
     parser = argparse.ArgumentParser(
@@ -115,11 +130,8 @@ if __name__ == '__main__':
     debug = options.debug
     cheat_mode = options.cheat_mode
 
-
-
-    env_class = getattr(games, variant)
     common_logger = get_logger(name="common_logger", debug_log_file_name="common_logger.log")
-    breakout_env = Player.env_from_class(env_class, cheat_mode, debug)
+    breakout_env = Player.env_from_class(environment_class=getattr(games, variant), cheat_mode=cheat_mode, debug=debug)
     xcs_recommender = XCSRecommender(breakout_env, alogger=common_logger, mode=RunningMode.TRAINING)
     # start player
     player = Player(breakout_env, alogger=common_logger, recommender=xcs_recommender)

@@ -60,7 +60,7 @@ class Recommender(Observable, Observer): # , metaclass=ABCMeta
         """
         # print("[Recommender] Got an observation")
         self.observations.put(obs)
-        self.issue_recommendation()
+        # self.issue_recommendation()
 
     def get_reward(self, reward):
         """
